@@ -80,9 +80,22 @@ export default function PatientDetailPage({ params }) {
 
       if (response.ok) {
         const data = await response.json();
+
+        // If we have a Cloudinary URL, download directly
+        if (data.file.cloudinaryUrl) {
+          const link = document.createElement('a');
+          link.href = data.file.cloudinaryUrl;
+          link.download = fileName;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else if (data.file.downloadUrl) {
+          // Use the download URL from the API
+          window.open(data.file.downloadUrl, '_blank');
+        }
+
         toast.success(`Download initiated for ${fileName}`);
-        // In a real implementation, you would handle the actual file download here
-        console.log('Download URL:', data.file.downloadUrl);
       } else {
         const error = await response.json();
         throw new Error(error.error || 'Download failed');
