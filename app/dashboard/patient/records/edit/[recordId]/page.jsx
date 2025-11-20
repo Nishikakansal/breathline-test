@@ -346,6 +346,94 @@ export default function EditRecord({ params }) {
         </div>
 
         <div className="space-y-6">
+          {/* Files Section */}
+          {files.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FileText className="mr-2 h-5 w-5" />
+                  Attached Files
+                </CardTitle>
+                <CardDescription>
+                  {files.length} file{files.length > 1 ? 's' : ''} attached to this record
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {files.map((file) => {
+                  const FileIcon = getFileIcon(file.mimetype);
+                  return (
+                    <div key={file.filename} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
+                        <FileIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{file.originalName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatFileSize(file.size)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex space-x-2 ml-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewFile(file)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>File Preview</DialogTitle>
+                              <DialogDescription>
+                                {file.originalName}
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              {viewingFile?.url && file.mimetype?.startsWith('image/') && (
+                                <img src={viewingFile.url} alt={file.originalName} className="max-w-full h-auto rounded-lg" />
+                              )}
+                              {viewingFile?.url && file.mimetype === 'application/pdf' && (
+                                <div className="text-center py-8">
+                                  <a href={viewingFile.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                    Open PDF in new tab
+                                  </a>
+                                </div>
+                              )}
+                              {!file.mimetype?.startsWith('image/') && file.mimetype !== 'application/pdf' && (
+                                <div className="text-center py-8">
+                                  <FileIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                  <p className="text-muted-foreground">Preview not available for this file type</p>
+                                  <Button className="mt-4" onClick={() => handleDownloadFile(file)}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Download to view
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownloadFile(file)}
+                          disabled={downloadingFile === file.filename}
+                        >
+                          {downloadingFile === file.filename ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Download className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Edit Guidelines</CardTitle>
@@ -384,7 +472,7 @@ export default function EditRecord({ params }) {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Note:</strong> Changes to medical records are logged for security and audit purposes. 
+              <strong>Note:</strong> Changes to medical records are logged for security and audit purposes.
               Only edit records to correct errors or add important information.
             </AlertDescription>
           </Alert>
