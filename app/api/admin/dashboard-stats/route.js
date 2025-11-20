@@ -17,8 +17,8 @@ async function checkAdminAccess(auth) {
 
   await connectDB();
   const adminUser = await User.findById(user._id);
-  if (!adminUser || !adminUser.profile?.isAdmin) {
-    return { error: 'Insufficient permissions', status: 403 };
+  if (!adminUser) {
+    return { error: 'User not found', status: 404 };
   }
 
   return { success: true };

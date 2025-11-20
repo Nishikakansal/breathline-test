@@ -17,6 +17,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer';
+import { Separator } from '@/components/ui/separator';
+import {
   Clock,
   CheckCircle,
   XCircle,
@@ -26,6 +36,11 @@ import {
   Eye,
   Download,
   Search,
+  FileText,
+  Image,
+  X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -39,6 +54,9 @@ export default function AdminVerifications({ onRefresh }) {
   const [actionReason, setActionReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [page, setPage] = useState(1);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [currentDocIndex, setCurrentDocIndex] = useState(0);
+  const [allDocuments, setAllDocuments] = useState([]);
 
   useEffect(() => {
     fetchVerifications();
@@ -107,6 +125,34 @@ export default function AdminVerifications({ onRefresh }) {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const openDocumentViewer = (verification) => {
+    setSelectedVerification(verification);
+    setAllDocuments(verification.documents);
+    setCurrentDocIndex(0);
+    setViewerOpen(true);
+  };
+
+  const nextDocument = () => {
+    setCurrentDocIndex((prev) => (prev + 1) % allDocuments.length);
+  };
+
+  const prevDocument = () => {
+    setCurrentDocIndex((prev) => (prev - 1 + allDocuments.length) % allDocuments.length);
+  };
+
+  const getCurrentDocument = () => {
+    return allDocuments[currentDocIndex];
+  };
+
+  const isImageFile = (fileName) => {
+    const ext = fileName.split('.').pop().toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+  };
+
+  const isPdfFile = (fileName) => {
+    return fileName.split('.').pop().toLowerCase() === 'pdf';
   };
 
   const getStatusColor = (status) => {
@@ -202,21 +248,41 @@ export default function AdminVerifications({ onRefresh }) {
                       </div>
 
                       {/* Documents */}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {verification.documents.map(doc => (
-                          <Badge key={doc.fileName} variant="secondary" className="flex items-center gap-1">
-                            <File className="h-3 w-3" />
-                            {doc.type}
-                            <a
-                              href={doc.fileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="ml-1 hover:underline"
-                            >
-                              <Download className="h-3 w-3 inline" />
-                            </a>
-                          </Badge>
-                        ))}
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <p className="text-sm font-medium">Documents ({verification.documents.length})</p>
+                          {verification.documents.length > 0 && (
+                            <Drawer open={viewerOpen && selectedVerification?._id === verification._id} onOpenChange={setViewerOpen}>
+                              <DrawerTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openDocumentViewer(verification)}
+                                  className="h-6 text-xs"
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  View All
+                                </Button>
+                              </DrawerTrigger>
+                            </Drawer>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {verification.documents.map(doc => (
+                            <Badge key={doc.fileName} variant="secondary" className="flex items-center gap-1 py-1 px-2">
+                              <File className="h-3 w-3" />
+                              <span>{doc.type}</span>
+                              <a
+                                href={doc.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="ml-1 hover:underline cursor-pointer"
+                              >
+                                <Download className="h-3 w-3" />
+                              </a>
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
 
                       {/* Notes */}
@@ -413,6 +479,140 @@ export default function AdminVerifications({ onRefresh }) {
           <div className="text-center py-8">
             <p className="text-muted-foreground">No verifications found</p>
           </div>
+        )}
+
+        {/* Document Viewer Drawer */}
+        {viewerOpen && selectedVerification && (
+          <Drawer open={viewerOpen} onOpenChange={setViewerOpen}>
+            <DrawerContent className="h-[90vh] flex flex-col">
+              <DrawerHeader className="border-b">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <DrawerTitle>Document Viewer</DrawerTitle>
+                    <DrawerDescription>
+                      {selectedVerification.doctor.name} - {getCurrentDocument()?.type}
+                    </DrawerDescription>
+                  </div>
+                  <DrawerClose />
+                </div>
+              </DrawerHeader>
+
+              <div className="flex-1 overflow-hidden flex flex-col p-4">
+                {allDocuments.length > 0 && getCurrentDocument() && (
+                  <div className="flex flex-col h-full">
+                    {/* Document Display Area */}
+                    <div className="flex-1 bg-muted rounded-lg p-4 mb-4 flex items-center justify-center overflow-auto">
+                      {isImageFile(getCurrentDocument().fileName) ? (
+                        <img
+                          src={getCurrentDocument().fileUrl}
+                          alt={getCurrentDocument().fileName}
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      ) : isPdfFile(getCurrentDocument().fileName) ? (
+                        <div className="text-center space-y-4">
+                          <FileText className="h-16 w-16 mx-auto text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{getCurrentDocument().fileName}</p>
+                            <p className="text-sm text-muted-foreground">PDF files open in a new tab</p>
+                          </div>
+                          <a
+                            href={getCurrentDocument().fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block"
+                          >
+                            <Button>Open PDF</Button>
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="text-center space-y-4">
+                          <File className="h-16 w-16 mx-auto text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{getCurrentDocument().fileName}</p>
+                            <p className="text-sm text-muted-foreground">File preview not available</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Document Info */}
+                    <Card className="mb-4">
+                      <CardContent className="pt-4 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-sm font-medium">{getCurrentDocument().type}</p>
+                            <p className="text-xs text-muted-foreground">{getCurrentDocument().fileName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(getCurrentDocument().fileSize / 1024 / 1024).toFixed(2)}MB • {new Date(getCurrentDocument().uploadedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <a href={getCurrentDocument().fileUrl} download>
+                            <Button variant="outline" size="sm">
+                              <Download className="h-4 w-4 mr-2" />
+                              Download
+                            </Button>
+                          </a>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Navigation */}
+                    <div className="flex items-center justify-between">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={prevDocument}
+                        disabled={allDocuments.length <= 1}
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Previous
+                      </Button>
+
+                      <div className="text-sm text-muted-foreground">
+                        Document {currentDocIndex + 1} of {allDocuments.length}
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={nextDocument}
+                        disabled={allDocuments.length <= 1}
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+
+                    {/* Document List */}
+                    {allDocuments.length > 1 && (
+                      <>
+                        <Separator className="my-4" />
+                        <div className="max-h-32 overflow-y-auto">
+                          <p className="text-sm font-medium mb-2">All Documents</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {allDocuments.map((doc, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => setCurrentDocIndex(idx)}
+                                className={`p-2 rounded-lg border-2 text-left transition-colors ${
+                                  idx === currentDocIndex
+                                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                                    : 'border-muted hover:border-blue-300'
+                                }`}
+                              >
+                                <p className="text-xs font-medium truncate">{doc.type}</p>
+                                <p className="text-xs text-muted-foreground">{(doc.fileSize / 1024).toFixed(0)}KB</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </DrawerContent>
+          </Drawer>
         )}
       </CardContent>
     </Card>

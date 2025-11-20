@@ -7,11 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function RegisterForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [verifyingDoctor, setVerifyingDoctor] = useState(false);
+  const [verifyingHospital, setVerifyingHospital] = useState(false);
   const [role, setRole] = useState('patient');
   const [formData, setFormData] = useState({
     email: '',
@@ -26,6 +31,12 @@ export function RegisterForm() {
     badgeNumber: '',
     department: '',
   });
+  const [verificationStatus, setVerificationStatus] = useState({
+    doctorVerified: null,
+    doctorVerificationData: null,
+    hospitalVerified: null,
+    hospitalVerificationData: null,
+  });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,6 +44,90 @@ export function RegisterForm() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const verifyDoctorLicense = async () => {
+    if (!formData.licenseNumber.trim()) {
+      toast.error('Please enter a license number');
+      return;
+    }
+
+    setVerifyingDoctor(true);
+    try {
+      const response = await fetch('/api/verify-doctor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ licenseNumber: formData.licenseNumber }),
+      });
+
+      const data = await response.json();
+
+      if (data.valid) {
+        setVerificationStatus(prev => ({
+          ...prev,
+          doctorVerified: true,
+          doctorVerificationData: data,
+        }));
+        toast.success(`Doctor verified: ${data.name}`);
+      } else {
+        setVerificationStatus(prev => ({
+          ...prev,
+          doctorVerified: false,
+          doctorVerificationData: data,
+        }));
+        toast.warning(data.message || 'License number could not be verified. Manual review pending.');
+      }
+    } catch (error) {
+      toast.error('Verification failed. Please try again.');
+      setVerificationStatus(prev => ({
+        ...prev,
+        doctorVerified: false,
+      }));
+    } finally {
+      setVerifyingDoctor(false);
+    }
+  };
+
+  const verifyHospital = async () => {
+    if (!formData.hospital.trim()) {
+      toast.error('Please enter a hospital ID');
+      return;
+    }
+
+    setVerifyingHospital(true);
+    try {
+      const response = await fetch('/api/verify-hospital', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hospitalId: formData.hospital }),
+      });
+
+      const data = await response.json();
+
+      if (data.valid) {
+        setVerificationStatus(prev => ({
+          ...prev,
+          hospitalVerified: true,
+          hospitalVerificationData: data,
+        }));
+        toast.success(`Hospital verified: ${data.name}`);
+      } else {
+        setVerificationStatus(prev => ({
+          ...prev,
+          hospitalVerified: false,
+          hospitalVerificationData: data,
+        }));
+        toast.warning(data.message || 'Hospital ID could not be verified. Manual review pending.');
+      }
+    } catch (error) {
+      toast.error('Verification failed. Please try again.');
+      setVerificationStatus(prev => ({
+        ...prev,
+        hospitalVerified: false,
+      }));
+    } finally {
+      setVerifyingHospital(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -186,18 +281,64 @@ export function RegisterForm() {
 
           {role === 'doctor' && (
             <>
+              {/* License Verification */}
               <div className="space-y-2">
-                <Label htmlFor="licenseNumber">License Number</Label>
-                <Input
-                  id="licenseNumber"
-                  name="licenseNumber"
-                  placeholder="License number"
-                  value={formData.licenseNumber}
-                  onChange={handleChange}
-                  required
-                  disabled={isLoading}
-                />
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="licenseNumber">License Number (NMC)</Label>
+                  {verificationStatus.doctorVerified !== null && (
+                    <Badge variant={verificationStatus.doctorVerified ? 'default' : 'secondary'}>
+                      {verificationStatus.doctorVerified ? (
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                      ) : (
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                      )}
+                      {verificationStatus.doctorVerified ? 'Verified' : 'Pending Review'}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    id="licenseNumber"
+                    name="licenseNumber"
+                    placeholder="e.g., 12345678"
+                    value={formData.licenseNumber}
+                    onChange={handleChange}
+                    required
+                    disabled={isLoading || verifyingDoctor}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={verifyDoctorLicense}
+                    disabled={verifyingDoctor || !formData.licenseNumber || isLoading}
+                    className="whitespace-nowrap"
+                  >
+                    {verifyingDoctor ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Verifying...
+                      </>
+                    ) : (
+                      'Verify'
+                    )}
+                  </Button>
+                </div>
+                {verificationStatus.doctorVerificationData && (
+                  <Alert className={verificationStatus.doctorVerified ? 'border-green-200 bg-green-50 dark:bg-green-900/20' : 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20'}>
+                    <AlertDescription className={verificationStatus.doctorVerified ? 'text-green-800 dark:text-green-200' : 'text-yellow-800 dark:text-yellow-200'}>
+                      {verificationStatus.doctorVerified ? (
+                        <>
+                          ✓ License verified: {verificationStatus.doctorVerificationData.name}
+                          {verificationStatus.doctorVerificationData.qualification && ` - ${verificationStatus.doctorVerificationData.qualification}`}
+                        </>
+                      ) : (
+                        'License number not found in database. Will be manually reviewed.'
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="specialization">Specialization</Label>
                 <Input
@@ -210,17 +351,63 @@ export function RegisterForm() {
                   disabled={isLoading}
                 />
               </div>
+
+              {/* Hospital Verification */}
               <div className="space-y-2">
-                <Label htmlFor="hospital">Hospital</Label>
-                <Input
-                  id="hospital"
-                  name="hospital"
-                  placeholder="Hospital name"
-                  value={formData.hospital}
-                  onChange={handleChange}
-                  required
-                  disabled={isLoading}
-                />
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="hospital">Hospital ID (ABDM)</Label>
+                  {verificationStatus.hospitalVerified !== null && (
+                    <Badge variant={verificationStatus.hospitalVerified ? 'default' : 'secondary'}>
+                      {verificationStatus.hospitalVerified ? (
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                      ) : (
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                      )}
+                      {verificationStatus.hospitalVerified ? 'Verified' : 'Pending Review'}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    id="hospital"
+                    name="hospital"
+                    placeholder="Hospital ID or name"
+                    value={formData.hospital}
+                    onChange={handleChange}
+                    required
+                    disabled={isLoading || verifyingHospital}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={verifyHospital}
+                    disabled={verifyingHospital || !formData.hospital || isLoading}
+                    className="whitespace-nowrap"
+                  >
+                    {verifyingHospital ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Verifying...
+                      </>
+                    ) : (
+                      'Verify'
+                    )}
+                  </Button>
+                </div>
+                {verificationStatus.hospitalVerificationData && (
+                  <Alert className={verificationStatus.hospitalVerified ? 'border-green-200 bg-green-50 dark:bg-green-900/20' : 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20'}>
+                    <AlertDescription className={verificationStatus.hospitalVerified ? 'text-green-800 dark:text-green-200' : 'text-yellow-800 dark:text-yellow-200'}>
+                      {verificationStatus.hospitalVerified ? (
+                        <>
+                          ✓ Hospital verified: {verificationStatus.hospitalVerificationData.name}
+                          {verificationStatus.hospitalVerificationData.state && ` - ${verificationStatus.hospitalVerificationData.state}`}
+                        </>
+                      ) : (
+                        'Hospital ID not found in database. Will be manually reviewed.'
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
             </>
           )}
