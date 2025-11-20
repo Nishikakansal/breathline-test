@@ -72,19 +72,17 @@ export async function GET(request, { params }) {
 
     await accessLog.save();
 
-    // In a real implementation, you would:
-    // 1. Decrypt the file if it's encrypted
-    // 2. Stream the file from your storage service (AWS S3, etc.)
-    // 3. Return the file with appropriate headers
+    // Return file information with Cloudinary URL if available
+    const downloadUrl = file.cloudinaryUrl || `/api/files/stream/${file.filename}?recordId=${recordId}`;
 
-    // For demo purposes, return file information
     return Response.json({
       message: 'File download initiated',
       file: {
         name: file.originalName,
         size: file.size,
         type: file.mimetype,
-        downloadUrl: `/api/files/download/${file.filename}`, // This would be your actual file URL
+        downloadUrl: downloadUrl,
+        cloudinaryUrl: file.cloudinaryUrl || null,
       },
     });
   } catch (error) {
