@@ -80,8 +80,8 @@ export async function GET(request, { params }) {
     }
 
     // Log the download access
-    const clientIp = request.headers.get('x-forwarded-for') || 
-                    request.headers.get('x-real-ip') || 
+    const clientIp = request.headers.get('x-forwarded-for') ||
+                    request.headers.get('x-real-ip') ||
                     'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
@@ -98,12 +98,9 @@ export async function GET(request, { params }) {
 
     await accessLog.save();
 
-    // In a real implementation, you would:
-    // 1. Decrypt the file if it's encrypted
-    // 2. Stream the file from your storage service (AWS S3, GridFS, etc.)
-    // 3. Return the actual file content with appropriate headers
+    // For Cloudinary-stored files, return the direct URL
+    const downloadUrl = file.cloudinaryUrl ? file.cloudinaryUrl : `/api/files/stream/${file.filename}?recordId=${record._id}`;
 
-    // For demo purposes, return file information and simulated download
     return Response.json({
       message: 'File download initiated',
       file: {
@@ -111,8 +108,9 @@ export async function GET(request, { params }) {
         name: file.originalName,
         size: file.size,
         type: file.mimetype,
-        downloadUrl: `/api/files/stream/${file.filename}?recordId=${record._id}`,
+        downloadUrl: downloadUrl,
         encrypted: file.encrypted || false,
+        cloudinaryUrl: file.cloudinaryUrl || null,
       },
       record: {
         id: record._id,

@@ -63,12 +63,12 @@ export async function GET(request, { params }) {
       }
     }
 
-    // In a real implementation, you would:
-    // 1. Retrieve the actual file from your storage system (AWS S3, GridFS, etc.)
-    // 2. Decrypt the file if it's encrypted
-    // 3. Stream the file content with appropriate headers
+    // If file is stored in Cloudinary, redirect to the Cloudinary URL
+    if (file.cloudinaryUrl) {
+      return Response.redirect(file.cloudinaryUrl, 307);
+    }
 
-    // For demo purposes, return a simulated file response
+    // Fallback for older files stored locally
     let content;
     let contentType = file.mimetype || 'application/octet-stream';
 
@@ -76,7 +76,6 @@ export async function GET(request, { params }) {
       content = `Sample medical document content for ${file.originalName}\n\nThis is a simulated file content. In a real implementation, the actual file would be retrieved from storage.`;
       contentType = 'text/plain';
     } else if (file.mimetype?.startsWith('image/')) {
-      // For images, you would return the actual image data
       content = 'Simulated image data - in real implementation, actual image bytes would be returned';
       contentType = file.mimetype;
     } else {

@@ -94,7 +94,8 @@ export async function GET(request, { params }) {
 
     // Generate file preview content based on file type
     let previewContent = null;
-    
+    const fileStreamUrl = file.cloudinaryUrl ? file.cloudinaryUrl : `/api/files/stream/${file.filename}?recordId=${record._id}`;
+
     if (file.mimetype?.startsWith('text/')) {
       // For text files, return simulated content
       previewContent = {
@@ -105,12 +106,12 @@ export async function GET(request, { params }) {
       previewContent = {
         type: 'pdf',
         content: 'PDF content would be displayed here using a PDF viewer component',
-        url: `/api/files/stream/${file.filename}?recordId=${record._id}`
+        url: fileStreamUrl
       };
     } else if (file.mimetype?.startsWith('image/')) {
       previewContent = {
         type: 'image',
-        url: `/api/files/stream/${file.filename}?recordId=${record._id}`,
+        url: fileStreamUrl,
         alt: file.originalName
       };
     } else {
