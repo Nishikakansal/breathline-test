@@ -22,7 +22,10 @@ const medicalRecordSchema = new mongoose.Schema({
     mimetype: String,
     size: Number,
     path: String,
+    cloudinaryUrl: String,
+    cloudinaryPublicId: String,
     encrypted: Boolean,
+    uploadedAt: Date,
   }],
   metadata: {
     recordDate: Date,
