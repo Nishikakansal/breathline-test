@@ -67,11 +67,12 @@ export default function EditRecord({ params }) {
           title: recordData.title || '',
           description: recordData.description || '',
           category: recordData.category || 'general',
-          recordDate: recordData.metadata?.recordDate 
-            ? new Date(recordData.metadata.recordDate).toISOString().split('T')[0] 
+          recordDate: recordData.metadata?.recordDate
+            ? new Date(recordData.metadata.recordDate).toISOString().split('T')[0]
             : '',
           isEmergencyVisible: recordData.metadata?.isEmergencyVisible || false,
         });
+        setFiles(recordData.files || []);
       } else {
         throw new Error('Failed to fetch record');
       }
