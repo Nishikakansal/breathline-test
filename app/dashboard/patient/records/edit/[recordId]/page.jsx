@@ -139,6 +139,72 @@ export default function EditRecord({ params }) {
     }
   };
 
+  const handleDownloadFile = async (file) => {
+    setDownloadingFile(file.filename);
+    try {
+      if (file.cloudinaryUrl) {
+        // Download directly from Cloudinary URL
+        downloadFromCloudinary(file.cloudinaryUrl, file.originalName);
+        toast.success(`Downloading ${file.originalName}`);
+      } else {
+        // Fallback to API endpoint
+        const response = await fetch(`/api/files/download/${file.filename}?recordId=${recordId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.file.cloudinaryUrl) {
+            downloadFromCloudinary(data.file.cloudinaryUrl, file.originalName);
+          }
+          toast.success(`Download initiated for ${file.originalName}`);
+        }
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download file');
+    } finally {
+      setDownloadingFile(null);
+    }
+  };
+
+  const handleViewFile = async (file) => {
+    try {
+      if (file.cloudinaryUrl) {
+        setViewingFile({ ...file, url: file.cloudinaryUrl });
+      } else {
+        const response = await fetch(`/api/files/view/${file.filename}?recordId=${recordId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setViewingFile({ ...file, preview: data.preview });
+        }
+      }
+    } catch (error) {
+      console.error('View error:', error);
+      toast.error('Failed to load file preview');
+    }
+  };
+
+  const getFileIcon = (mimetype) => {
+    if (mimetype?.startsWith('image/')) return Image;
+    return File;
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
