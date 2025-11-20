@@ -36,7 +36,10 @@ export default function EditRecord({ params }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  
+  const [files, setFiles] = useState([]);
+  const [viewingFile, setViewingFile] = useState(null);
+  const [downloadingFile, setDownloadingFile] = useState(null);
+
   const [record, setRecord] = useState({
     title: '',
     description: '',
