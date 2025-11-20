@@ -1,6 +1,7 @@
 import { authenticateToken } from '@/middleware/auth';
 import MedicalRecord from '@/models/MedicalRecord';
 import connectDB from '@/lib/mongodb';
+import { uploadFileToCloudinary } from '@/lib/cloudinary';
 
 export async function POST(request) {
   try {
@@ -28,16 +29,37 @@ export async function POST(request) {
 
     await connectDB();
 
-    // In a real implementation, you would save files to a storage service
-    // For demo purposes, we'll simulate file storage
-    const fileData = files.map(file => ({
-      filename: `${Date.now()}_${file.name}`,
-      originalName: file.name,
-      mimetype: file.type,
-      size: file.size,
-      path: `/uploads/${Date.now()}_${file.name}`,
-      encrypted: true,
-    }));
+    const fileData = [];
+
+    for (const file of files) {
+      const buffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(buffer);
+
+      try {
+        const cloudinaryResult = await uploadFileToCloudinary(
+          uint8Array,
+          file.name,
+          `medical-records/${user._id}`
+        );
+
+        fileData.push({
+          filename: cloudinaryResult.publicId,
+          originalName: file.name,
+          mimetype: file.type,
+          size: cloudinaryResult.size,
+          cloudinaryUrl: cloudinaryResult.url,
+          cloudinaryPublicId: cloudinaryResult.publicId,
+          encrypted: true,
+          uploadedAt: cloudinaryResult.uploadedAt,
+        });
+      } catch (uploadError) {
+        console.error(`Error uploading ${file.name}:`, uploadError);
+        return Response.json(
+          { error: `Failed to upload ${file.name}: ${uploadError.message}` },
+          { status: 500 }
+        );
+      }
+    }
 
     const record = new MedicalRecord({
       patientId: user._id,
